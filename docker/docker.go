@@ -37,8 +37,8 @@ func NewDaemon(client *client.Client) *Daemon {
 
 func (w *Daemon) ListenContainerCreation(ctx context.Context) <-chan ContainerCreated {
 	filterArgs := filters.NewArgs()
-	filterArgs.Add("type", events.ContainerEventType)
-	filterArgs.Add("event", "create")
+	filterArgs.Add("type", events.ImageEventType)
+	filterArgs.Add("event", "pull")
 	filter := types.EventsOptions{
 		Filters: filterArgs,
 	}
@@ -53,7 +53,7 @@ func (w *Daemon) ListenContainerCreation(ctx context.Context) <-chan ContainerCr
 	resChan := make(chan ContainerCreated)
 	go func() {
 		for msg := range msgs {
-			imageName := msg.Actor.Attributes["image"]
+			imageName := msg.Actor.ID
 			log.Infof("Image '%s' has been used", imageName)
 			inspect, _, err := w.client.ImageInspectWithRaw(ctx, imageName)
 			if err != nil {
@@ -118,7 +118,7 @@ func (w *Daemon) ContainsSameVersion(ctx context.Context, imageName, yourImageID
 }
 
 func (w *Daemon) Wait(ctx context.Context) error {
-	fmt.Print("Waiting for docker ")
+	log.Println("Waiting for docker ")
 	for {
 		select {
 		case <-ctx.Done():
