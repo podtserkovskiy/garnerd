@@ -1,4 +1,5 @@
 # GarnerD
+A dynamic cache for docker images in minikube.
 
 ## ToDo:
 - Timeouts
