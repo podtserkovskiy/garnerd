@@ -13,16 +13,16 @@ import (
 	"github.com/podtserkovskiy/garnerd/storage"
 )
 
-type metaFile struct {
+type MetaFile struct {
 	mu   sync.Mutex
 	path string
 }
 
-func newMetaFile(dir string) *metaFile {
-	return &metaFile{path: filepath.Join(dir, "meta.json")}
+func NewMetaFile(dir string) *MetaFile {
+	return &MetaFile{path: filepath.Join(dir, "meta.json")}
 }
 
-func (f *metaFile) read() (map[string]storage.Meta, error) {
+func (f *MetaFile) read() (map[string]storage.Meta, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -44,7 +44,7 @@ func (f *metaFile) read() (map[string]storage.Meta, error) {
 	return data, nil
 }
 
-func (f *metaFile) write(data map[string]storage.Meta) error {
+func (f *MetaFile) write(data map[string]storage.Meta) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 
@@ -64,11 +64,11 @@ func (f *metaFile) write(data map[string]storage.Meta) error {
 	return nil
 }
 
-func (f *metaFile) ping() error {
+func (f *MetaFile) ping() error {
 	dir := filepath.Dir(f.path)
 	stat, err := os.Stat(dir)
 	if err != nil {
-		return fmt.Errorf("ping '%s', %w", dir, err)
+		return fmt.Errorf("Ping '%s', %w", dir, err)
 	}
 	if !stat.IsDir() {
 		return fmt.Errorf("path '%s' is a file, directory is expected", dir) //nolint: goerr113

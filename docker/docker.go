@@ -2,6 +2,8 @@ package docker
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -88,6 +90,20 @@ func (w *Daemon) LoadDump(ctx context.Context, image io.Reader) error {
 		return err
 	}
 	defer resp.Body.Close()
+
+	if resp.JSON {
+		jsonError := struct {
+			Error string `json:"error"`
+		}{}
+
+		if err = json.NewDecoder(resp.Body).Decode(&jsonError); err != nil {
+			return err
+		}
+
+		if len(jsonError.Error) > 0 {
+			return errors.New(jsonError.Error) // nolint: goerr113
+		}
+	}
 
 	return nil
 }

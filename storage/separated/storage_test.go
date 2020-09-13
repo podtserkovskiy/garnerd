@@ -1,5 +1,5 @@
 // nolint: goerr113,funlen
-package fs
+package separated
 
 import (
 	"bytes"
@@ -18,32 +18,32 @@ type metaCRUDMock struct {
 	mock.Mock
 }
 
-func (m *metaCRUDMock) set(entry storage.Meta) error {
+func (m *metaCRUDMock) Set(entry storage.Meta) error {
 	args := m.Called(entry)
 
 	return args.Error(0)
 }
 
-func (m *metaCRUDMock) get(imageName string) (storage.Meta, error) {
+func (m *metaCRUDMock) Get(imageName string) (storage.Meta, error) {
 	args := m.Called(imageName)
 
 	return args.Get(0).(storage.Meta), args.Error(1)
 }
 
-func (m *metaCRUDMock) remove(imageName string) error {
+func (m *metaCRUDMock) Remove(imageName string) error {
 	args := m.Called(imageName)
 
 	return args.Error(0)
 }
 
-func (m *metaCRUDMock) getAll() ([]storage.Meta, error) {
+func (m *metaCRUDMock) GetAll() ([]storage.Meta, error) {
 	args := m.Called()
 	metas, _ := args.Get(0).([]storage.Meta)
 
 	return metas, args.Error(1)
 }
 
-func (m *metaCRUDMock) ping() error {
+func (m *metaCRUDMock) Ping() error {
 	args := m.Called()
 
 	return args.Error(0)
@@ -53,93 +53,93 @@ type imgStorageMock struct {
 	mock.Mock
 }
 
-func (m *imgStorageMock) save(imgName string, imageDump io.Reader) error {
+func (m *imgStorageMock) Save(imgName string, imageDump io.Reader) error {
 	args := m.Called(imgName, imageDump)
 
 	return args.Error(0)
 }
 
-func (m *imgStorageMock) load(imgName string) (io.ReadCloser, error) {
+func (m *imgStorageMock) Load(imgName string) (io.ReadCloser, error) {
 	args := m.Called(imgName)
 	rc, _ := args.Get(0).(io.ReadCloser)
 
 	return rc, args.Error(1)
 }
 
-func (m *imgStorageMock) remove(imgName string) error {
+func (m *imgStorageMock) Remove(imgName string) error {
 	args := m.Called(imgName)
 
 	return args.Error(0)
 }
 
-func (m *imgStorageMock) isExist(imageName string) (bool, error) {
+func (m *imgStorageMock) IsExist(imageName string) (bool, error) {
 	args := m.Called(imageName)
 
 	return args.Bool(0), args.Error(1)
 }
 
-func (m *imgStorageMock) removeNotIn(imageNames []string) error {
+func (m *imgStorageMock) RemoveNotIn(imageNames []string) error {
 	args := m.Called(imageNames)
 
 	return args.Error(0)
 }
 
-func (m *imgStorageMock) ping() error {
+func (m *imgStorageMock) Ping() error {
 	args := m.Called()
 
 	return args.Error(0)
 }
 
 func TestStorage_CleanUp(t *testing.T) {
-	t.Run("metaCRUD.getAll returns error", func(t *testing.T) {
+	t.Run("MetaCRUD.GetAll returns error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("getAll").Return(nil, errors.New("some err"))
+		metaCRUD.On("GetAll").Return(nil, errors.New("some err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: nil}
 		err := stor.CleanUp(context.Background())
 		require.EqualError(t, err, "some err")
 	})
 
-	t.Run("imgStorage.removeNotIn receives correct images list ", func(t *testing.T) {
+	t.Run("ImgStorage.RemoveNotIn receives correct images list ", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("getAll").Return([]storage.Meta{{ImageName: "a"}, {ImageName: "b"}}, nil)
-		imgStorage.On("removeNotIn", []string{"a", "b"}).Return(errors.New("some err"))
+		metaCRUD.On("GetAll").Return([]storage.Meta{{ImageName: "a"}, {ImageName: "b"}}, nil)
+		imgStorage.On("RemoveNotIn", []string{"a", "b"}).Return(errors.New("some err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		_ = stor.CleanUp(context.Background())
 	})
 
-	t.Run("imgStorage.removeNotIn returns an error", func(t *testing.T) {
+	t.Run("ImgStorage.RemoveNotIn returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("getAll").Return(nil, nil)
-		imgStorage.On("removeNotIn", mock.Anything).Return(errors.New("some err"))
+		metaCRUD.On("GetAll").Return(nil, nil)
+		imgStorage.On("RemoveNotIn", mock.Anything).Return(errors.New("some err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.CleanUp(context.Background())
 		require.EqualError(t, err, "some err")
 	})
 
-	t.Run("imgStorage.isExist returns an error", func(t *testing.T) {
+	t.Run("ImgStorage.IsExist returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("getAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
-		imgStorage.On("removeNotIn", mock.Anything).Return(nil)
-		imgStorage.On("isExist", mock.Anything).Return(false, errors.New("some err"))
+		metaCRUD.On("GetAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
+		imgStorage.On("RemoveNotIn", mock.Anything).Return(nil)
+		imgStorage.On("IsExist", mock.Anything).Return(false, errors.New("some err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.CleanUp(context.Background())
 		require.EqualError(t, err, "some err")
 	})
 
-	t.Run("imgStorage.remove returns an error", func(t *testing.T) {
+	t.Run("ImgStorage.Remove returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("getAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
-		imgStorage.On("removeNotIn", mock.Anything).Return(nil)
-		imgStorage.On("isExist", mock.Anything).Return(false, nil)
-		metaCRUD.On("remove", mock.Anything).Return(errors.New("some err"))
+		metaCRUD.On("GetAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
+		imgStorage.On("RemoveNotIn", mock.Anything).Return(nil)
+		imgStorage.On("IsExist", mock.Anything).Return(false, nil)
+		metaCRUD.On("Remove", mock.Anything).Return(errors.New("some err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.CleanUp(context.Background())
@@ -149,10 +149,10 @@ func TestStorage_CleanUp(t *testing.T) {
 	t.Run("image has been deleted", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("getAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
-		imgStorage.On("removeNotIn", mock.Anything).Return(nil)
-		imgStorage.On("isExist", mock.Anything).Return(false, nil)
-		metaCRUD.On("remove", "a").Return(nil)
+		metaCRUD.On("GetAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
+		imgStorage.On("RemoveNotIn", mock.Anything).Return(nil)
+		imgStorage.On("IsExist", mock.Anything).Return(false, nil)
+		metaCRUD.On("Remove", "a").Return(nil)
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.CleanUp(context.Background())
@@ -162,9 +162,9 @@ func TestStorage_CleanUp(t *testing.T) {
 	t.Run("image has not been deleted", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("getAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
-		imgStorage.On("removeNotIn", mock.Anything).Return(nil)
-		imgStorage.On("isExist", mock.Anything).Return(true, nil)
+		metaCRUD.On("GetAll").Return([]storage.Meta{{ImageName: "a"}}, nil)
+		imgStorage.On("RemoveNotIn", mock.Anything).Return(nil)
+		imgStorage.On("IsExist", mock.Anything).Return(true, nil)
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.CleanUp(context.Background())
@@ -176,8 +176,8 @@ func TestStorage_Wait(t *testing.T) {
 	t.Run("context has error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
-		metaCRUD.On("ping").Return(errors.New("some 1")).Once()
-		imgStorage.On("ping").Return(errors.New("some 2")).Once()
+		metaCRUD.On("Ping").Return(errors.New("some 1")).Once()
+		imgStorage.On("Ping").Return(errors.New("some 2")).Once()
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		ctx, cancel := context.WithCancel(context.Background())
@@ -191,12 +191,12 @@ func TestStorage_Wait(t *testing.T) {
 		imgStorage := &imgStorageMock{}
 
 		// first try
-		metaCRUD.On("ping").Return(errors.New("some 1")).Once()
-		imgStorage.On("ping").Return(errors.New("some 2")).Once()
+		metaCRUD.On("Ping").Return(errors.New("some 1")).Once()
+		imgStorage.On("Ping").Return(errors.New("some 2")).Once()
 
 		//// second try
-		metaCRUD.On("ping").Return(nil).Once()
-		imgStorage.On("ping").Return(nil).Once()
+		metaCRUD.On("Ping").Return(nil).Once()
+		imgStorage.On("Ping").Return(nil).Once()
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Wait(context.Background())
@@ -207,7 +207,7 @@ func TestStorage_Wait(t *testing.T) {
 func TestStorage_GetAllMeta(t *testing.T) {
 	t.Run("storage returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("getAll").Return(nil, errors.New("some err"))
+		metaCRUD.On("GetAll").Return(nil, errors.New("some err"))
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: nil}
 		metas, err := stor.GetAllMeta()
 		require.Error(t, err, "")
@@ -216,7 +216,7 @@ func TestStorage_GetAllMeta(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("getAll").Return([]storage.Meta{{}, {}}, nil)
+		metaCRUD.On("GetAll").Return([]storage.Meta{{}, {}}, nil)
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: nil}
 		metas, err := stor.GetAllMeta()
 		require.NoError(t, err)
@@ -227,7 +227,7 @@ func TestStorage_GetAllMeta(t *testing.T) {
 func TestStorage_Load(t *testing.T) {
 	t.Run("storage returns an error", func(t *testing.T) {
 		imgStorage := &imgStorageMock{}
-		imgStorage.On("load", mock.Anything).Return(nil, errors.New("some err"))
+		imgStorage.On("Load", mock.Anything).Return(nil, errors.New("some err"))
 		stor := &Storage{metaStorage: nil, imgStorage: imgStorage}
 		_, err := stor.Load("")
 		require.Error(t, err)
@@ -235,7 +235,7 @@ func TestStorage_Load(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		imgStorage := &imgStorageMock{}
-		imgStorage.On("load", mock.Anything).Return(nil, nil)
+		imgStorage.On("Load", mock.Anything).Return(nil, nil)
 		stor := &Storage{metaStorage: nil, imgStorage: imgStorage}
 		_, err := stor.Load("")
 		require.NoError(t, err)
@@ -245,7 +245,7 @@ func TestStorage_Load(t *testing.T) {
 func TestStorage_GetMeta(t *testing.T) {
 	t.Run("storage returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("get", mock.Anything).Return(storage.Meta{}, errors.New("some err"))
+		metaCRUD.On("Get", mock.Anything).Return(storage.Meta{}, errors.New("some err"))
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: nil}
 		_, err := stor.GetMeta("")
 		require.Error(t, err)
@@ -253,7 +253,7 @@ func TestStorage_GetMeta(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("get", mock.Anything).Return(storage.Meta{}, nil)
+		metaCRUD.On("Get", mock.Anything).Return(storage.Meta{}, nil)
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: nil}
 		_, err := stor.GetMeta("")
 		require.NoError(t, err)
@@ -263,7 +263,7 @@ func TestStorage_GetMeta(t *testing.T) {
 func TestStorage_Remove(t *testing.T) {
 	t.Run("meta returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("remove", mock.Anything).Return(errors.New("meta err"))
+		metaCRUD.On("Remove", mock.Anything).Return(errors.New("meta err"))
 		imgStorage := &imgStorageMock{}
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Remove("")
@@ -272,9 +272,9 @@ func TestStorage_Remove(t *testing.T) {
 
 	t.Run("img returns an error", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("remove", mock.Anything).Return(nil)
+		metaCRUD.On("Remove", mock.Anything).Return(nil)
 		imgStorage := &imgStorageMock{}
-		imgStorage.On("remove", mock.Anything).Return(errors.New("img err"))
+		imgStorage.On("Remove", mock.Anything).Return(errors.New("img err"))
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Remove("")
 		require.EqualError(t, err, "img err")
@@ -282,9 +282,9 @@ func TestStorage_Remove(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
-		metaCRUD.On("remove", mock.Anything).Return(nil)
+		metaCRUD.On("Remove", mock.Anything).Return(nil)
 		imgStorage := &imgStorageMock{}
-		imgStorage.On("remove", mock.Anything).Return(nil)
+		imgStorage.On("Remove", mock.Anything).Return(nil)
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Remove("")
 		require.NoError(t, err)
@@ -296,7 +296,7 @@ func TestStorage_Save(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
 		reader := bytes.NewBufferString("cc")
-		imgStorage.On("save", "aa", reader).Return(errors.New("img err"))
+		imgStorage.On("Save", "aa", reader).Return(errors.New("img err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Save("aa", "bb", reader)
@@ -307,8 +307,8 @@ func TestStorage_Save(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
 		reader := bytes.NewBufferString("cc")
-		imgStorage.On("save", "aa", reader).Return(nil)
-		metaCRUD.On("set", mock.Anything).Return(errors.New("meta err"))
+		imgStorage.On("Save", "aa", reader).Return(nil)
+		metaCRUD.On("Set", mock.Anything).Return(errors.New("meta err"))
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Save("aa", "bb", reader)
@@ -319,8 +319,8 @@ func TestStorage_Save(t *testing.T) {
 		metaCRUD := &metaCRUDMock{}
 		imgStorage := &imgStorageMock{}
 		reader := bytes.NewBufferString("cc")
-		imgStorage.On("save", "aa", reader).Return(nil)
-		metaCRUD.On("set", mock.Anything).Return(nil)
+		imgStorage.On("Save", "aa", reader).Return(nil)
+		metaCRUD.On("Set", mock.Anything).Return(nil)
 
 		stor := &Storage{metaStorage: metaCRUD, imgStorage: imgStorage}
 		err := stor.Save("aa", "bb", reader)
