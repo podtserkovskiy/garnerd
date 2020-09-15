@@ -17,15 +17,15 @@ var (
 	tmpCacheFile = regexp.MustCompile(`\..+\.cache\d?`) // nolint: gochecknoglobals
 )
 
-type ImgFileStorage struct {
+type ImgStorage struct {
 	dir string
 }
 
-func NewImgFileStorage(dir string) *ImgFileStorage {
-	return &ImgFileStorage{dir: dir}
+func NewImgStorage(dir string) *ImgStorage {
+	return &ImgStorage{dir: dir}
 }
 
-func (i *ImgFileStorage) Save(imgName string, imageDump io.Reader) error {
+func (i *ImgStorage) Save(imgName string, imageDump io.Reader) error {
 	imagePath := i.imagePath(imgName)
 	file, err := ioutils.NewAtomicFileWriter(imagePath, os.ModePerm)
 	if err != nil {
@@ -40,7 +40,7 @@ func (i *ImgFileStorage) Save(imgName string, imageDump io.Reader) error {
 	return nil
 }
 
-func (i *ImgFileStorage) Load(imgName string) (io.ReadCloser, error) {
+func (i *ImgStorage) Load(imgName string) (io.ReadCloser, error) {
 	imagePath := i.imagePath(imgName)
 	file, err := os.Open(imagePath)
 	if err != nil {
@@ -50,7 +50,7 @@ func (i *ImgFileStorage) Load(imgName string) (io.ReadCloser, error) {
 	return file, nil
 }
 
-func (i *ImgFileStorage) Remove(imgName string) error {
+func (i *ImgStorage) Remove(imgName string) error {
 	imagePath := i.imagePath(imgName)
 	err := os.RemoveAll(imagePath)
 	if err != nil {
@@ -60,7 +60,7 @@ func (i *ImgFileStorage) Remove(imgName string) error {
 	return nil
 }
 
-func (i *ImgFileStorage) IsExist(imageName string) (bool, error) {
+func (i *ImgStorage) IsExist(imageName string) (bool, error) {
 	_, err := os.Stat(i.imagePath(imageName))
 	switch {
 	case os.IsNotExist(err):
@@ -72,7 +72,7 @@ func (i *ImgFileStorage) IsExist(imageName string) (bool, error) {
 	return false, fmt.Errorf("checking existence '%s', %w", imageName, err)
 }
 
-func (i *ImgFileStorage) RemoveNotIn(imageNames []string) error {
+func (i *ImgStorage) RemoveNotIn(imageNames []string) error {
 	allowedSet := map[string]bool{}
 	for _, name := range imageNames {
 		allowedSet[i.imagePath(name)] = true
@@ -90,7 +90,7 @@ func (i *ImgFileStorage) RemoveNotIn(imageNames []string) error {
 	})
 }
 
-func (i *ImgFileStorage) Ping() error {
+func (i *ImgStorage) Ping() error {
 	stat, err := os.Stat(i.dir)
 	if err != nil {
 		return fmt.Errorf("Ping '%s', %w", i.dir, err)
@@ -102,7 +102,7 @@ func (i *ImgFileStorage) Ping() error {
 	return nil
 }
 
-func (i *ImgFileStorage) imagePath(imageName string) string {
+func (i *ImgStorage) imagePath(imageName string) string {
 	return filepath.Join(i.dir, imageNameToFileName(imageName))
 }
 

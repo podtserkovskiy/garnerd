@@ -5,8 +5,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/podtserkovskiy/garnerd/storage/compact"
-	"github.com/podtserkovskiy/garnerd/storage/fs"
+	fs2 "github.com/podtserkovskiy/garnerd/storage/meta/fs"
+
+	"github.com/podtserkovskiy/garnerd/storage/image/compact"
 	"github.com/podtserkovskiy/garnerd/storage/separated"
 
 	"github.com/docker/docker/client"
@@ -34,7 +35,7 @@ func Start(maxCount int, dir string) error {
 	}
 
 	log.Infof("Cache dir: %s", dir)
-	storage := separated.NewStorage(fs.NewMetaFileCRUD(fs.NewMetaFile(dir)), compact.NewImgStorage(dir))
+	storage := separated.NewStorage(fs2.NewMetaCRUD(fs2.NewMetaFile(dir)), compact.NewImgStorage(dir))
 	err = storage.Wait(ctx)
 	if err != nil {
 		return fmt.Errorf("waiting for storage, %s", err)

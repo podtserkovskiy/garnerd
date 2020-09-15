@@ -156,7 +156,6 @@ func TestMetaFile_Write(t *testing.T) {
 	})
 }
 
-// nolint: dupl
 func TestMetaFile_Ping(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		dir := setUpTempDir(t) + "/aaaa"
