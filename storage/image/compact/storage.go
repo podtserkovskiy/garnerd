@@ -24,6 +24,8 @@ type fileData struct {
 	srcPath, tarPath string
 }
 
+// compact.ImgStorage stores every layer in a single instance.
+// it saves ~ 25% of disk space unlike fs.ImgStorage.
 type ImgStorage struct {
 	dir string
 	mu  sync.Mutex
@@ -33,6 +35,7 @@ func NewImgStorage(dir string) *ImgStorage {
 	return &ImgStorage{dir: dir}
 }
 
+// Save decodes tar and stores layers and meta.
 func (i *ImgStorage) Save(imageName string, imageDump io.Reader) error { // nolint: funlen,gocognit
 	i.mu.Lock()
 	defer i.mu.Unlock()
@@ -115,6 +118,7 @@ func (i *ImgStorage) Save(imageName string, imageDump io.Reader) error { // noli
 	return nil
 }
 
+// Load creates temp tar io.ReadCloser.
 func (i *ImgStorage) Load(imageName string) (io.ReadCloser, error) { // nolint: funlen
 	i.mu.Lock()
 	defer i.mu.Unlock()
@@ -255,6 +259,8 @@ func (i *ImgStorage) Ping() error {
 	return nil
 }
 
+// cleanUp removes unused layers
+// cleanUp should be called after any change in meta or layers.
 func (i *ImgStorage) cleanUp() {
 	allowedLayers := map[string]bool{}
 	err := filepath.Walk(filepath.Join(i.dir, "meta"), func(path string, info os.FileInfo, err error) error {
