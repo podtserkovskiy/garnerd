@@ -25,7 +25,7 @@ func setUpTempDir(t *testing.T) string {
 func cleanUpTempDir(t *testing.T, dir string) func() {
 	return func() {
 		if err := os.RemoveAll(dir); err != nil {
-			t.Log("can't remove tempdir", err)
+			t.Log("can't Remove tempdir", err)
 		}
 	}
 }
@@ -106,7 +106,7 @@ func TestMetaFile_WriteSuccess(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := setUpTempDir(t)
 			tc.makeFixture(t, dir)
-			file := newMetaFile(dir)
+			file := NewMetaFile(dir)
 			data, err := file.read()
 			require.NoError(t, err)
 			require.Equal(t, tc.expData, data)
@@ -130,7 +130,7 @@ func TestMetaFile_WriteError(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := setUpTempDir(t)
 			tc.makeFixture(t, dir)
-			file := newMetaFile(dir)
+			file := NewMetaFile(dir)
 			_, err := file.read()
 			require.EqualError(t, err, "can't readFile meta file, invalid character '}' looking for beginning of value")
 		})
@@ -140,7 +140,7 @@ func TestMetaFile_WriteError(t *testing.T) {
 func TestMetaFile_Write(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		dir := setUpTempDir(t)
-		file := newMetaFile(dir)
+		file := NewMetaFile(dir)
 		data := map[string]storage.Meta{
 			"ubuntu:1.0": {ImageID: "hash:1111", ImageName: "ubuntu:1.0", UpdatedAt: time.Unix(23, 0)},
 			"debian:2.0": {ImageID: "hash:2222", ImageName: "debian:2.0", UpdatedAt: time.Unix(24, 0)},
@@ -156,25 +156,24 @@ func TestMetaFile_Write(t *testing.T) {
 	})
 }
 
-// nolint: dupl
 func TestMetaFile_Ping(t *testing.T) {
 	t.Run("error", func(t *testing.T) {
 		dir := setUpTempDir(t) + "/aaaa"
-		file := newMetaFile(dir)
+		file := NewMetaFile(dir)
 		err := file.ping()
 		require.Error(t, err)
 	})
 	t.Run("is not a directory", func(t *testing.T) {
 		dir := setUpTempDir(t) + "/aaaa"
 		require.NoError(t, ioutil.WriteFile(dir, nil, 0600))
-		file := newMetaFile(dir)
+		file := NewMetaFile(dir)
 		err := file.ping()
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "is a file, directory is expected")
 	})
 	t.Run("success", func(t *testing.T) {
 		dir := setUpTempDir(t)
-		file := newMetaFile(dir)
+		file := NewMetaFile(dir)
 		err := file.ping()
 		require.NoError(t, err)
 	})

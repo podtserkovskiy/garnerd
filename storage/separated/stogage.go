@@ -1,4 +1,4 @@
-package fs
+package separated
 
 import (
 	"context"
@@ -9,38 +9,38 @@ import (
 	"github.com/podtserkovskiy/garnerd/storage"
 )
 
-type metaCRUD interface {
-	set(entry storage.Meta) error
-	get(imageName string) (storage.Meta, error)
-	remove(imageName string) error
-	getAll() ([]storage.Meta, error)
-	ping() error
+type MetaCRUD interface {
+	Set(entry storage.Meta) error
+	Get(imageName string) (storage.Meta, error)
+	Remove(imageName string) error
+	GetAll() ([]storage.Meta, error)
+	Ping() error
 }
 
-type imgStorage interface {
-	save(imgName string, imageDump io.Reader) error
-	load(imgName string) (io.ReadCloser, error)
-	remove(imgName string) error
-	isExist(imageName string) (bool, error)
-	removeNotIn(imageNames []string) error
-	ping() error
+type ImgStorage interface {
+	Save(imgName string, imageDump io.Reader) error
+	Load(imgName string) (io.ReadCloser, error)
+	Remove(imgName string) error
+	IsExist(imageName string) (bool, error)
+	RemoveNotIn(imageNames []string) error
+	Ping() error
 }
 
 type Storage struct {
-	metaStorage metaCRUD
-	imgStorage  imgStorage
+	metaStorage MetaCRUD
+	imgStorage  ImgStorage
 }
 
-func NewStorage(dir string) *Storage {
-	return &Storage{metaStorage: newMetaFileCRUD(newMetaFile(dir)), imgStorage: newImgFileStorage(dir)}
+func NewStorage(metaStorage MetaCRUD, imgStorage ImgStorage) *Storage {
+	return &Storage{metaStorage: metaStorage, imgStorage: imgStorage}
 }
 
 func (s *Storage) Save(imageName, imageID string, imageDump io.Reader) error {
-	if err := s.imgStorage.save(imageName, imageDump); err != nil {
+	if err := s.imgStorage.Save(imageName, imageDump); err != nil {
 		return err
 	}
 
-	err := s.metaStorage.set(storage.Meta{
+	err := s.metaStorage.Set(storage.Meta{
 		ImageName: imageName,
 		ImageID:   imageID,
 		UpdatedAt: time.Now(),
@@ -53,31 +53,31 @@ func (s *Storage) Save(imageName, imageID string, imageDump io.Reader) error {
 }
 
 func (s *Storage) Load(imageName string) (io.ReadCloser, error) {
-	return s.imgStorage.load(imageName)
+	return s.imgStorage.Load(imageName)
 }
 
 func (s *Storage) Remove(imageName string) error {
-	err := s.metaStorage.remove(imageName)
+	err := s.metaStorage.Remove(imageName)
 	if err != nil {
 		return err
 	}
 
-	return s.imgStorage.remove(imageName)
+	return s.imgStorage.Remove(imageName)
 }
 
 func (s *Storage) GetMeta(imageName string) (storage.Meta, error) {
-	return s.metaStorage.get(imageName)
+	return s.metaStorage.Get(imageName)
 }
 
 func (s *Storage) GetAllMeta() ([]storage.Meta, error) {
-	return s.metaStorage.getAll()
+	return s.metaStorage.GetAll()
 }
 
 func (s *Storage) Wait(ctx context.Context) error {
 	fmt.Printf("Start waiting for storages")
 	for {
-		imgErr := s.imgStorage.ping()
-		metaErr := s.metaStorage.ping()
+		imgErr := s.imgStorage.Ping()
+		metaErr := s.metaStorage.Ping()
 		if imgErr == nil && metaErr == nil {
 			fmt.Printf("\nStorages has been found successfully\n")
 
@@ -96,7 +96,7 @@ func (s *Storage) Wait(ctx context.Context) error {
 
 // CleanUp removes not paired images and metas.
 func (s *Storage) CleanUp(ctx context.Context) error {
-	metas, err := s.metaStorage.getAll()
+	metas, err := s.metaStorage.GetAll()
 	if err != nil {
 		return err
 	}
@@ -106,13 +106,13 @@ func (s *Storage) CleanUp(ctx context.Context) error {
 		imageNames = append(imageNames, meta.ImageName)
 	}
 
-	err = s.imgStorage.removeNotIn(imageNames)
+	err = s.imgStorage.RemoveNotIn(imageNames)
 	if err != nil {
 		return err
 	}
 
 	for _, meta := range metas {
-		isExist, err := s.imgStorage.isExist(meta.ImageName)
+		isExist, err := s.imgStorage.IsExist(meta.ImageName)
 		if err != nil {
 			return err
 		}
@@ -121,7 +121,7 @@ func (s *Storage) CleanUp(ctx context.Context) error {
 			continue
 		}
 
-		if err := s.metaStorage.remove(meta.ImageName); err != nil {
+		if err := s.metaStorage.Remove(meta.ImageName); err != nil {
 			return err
 		}
 	}

@@ -38,8 +38,8 @@ func TestMeta_Set(t *testing.T) {
 		metaRW := &metaRWMock{}
 		metaRW.On("read").Return(nil, errors.New("somerr"))
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		err := metaCRUD.set(storage.Meta{})
+		metaCRUD := NewMetaCRUD(metaRW)
+		err := metaCRUD.Set(storage.Meta{})
 		require.EqualError(t, err, "somerr")
 	})
 
@@ -50,8 +50,8 @@ func TestMeta_Set(t *testing.T) {
 		expectedMetaEntry := storage.Meta{ImageName: "aa", ImageID: "bb", UpdatedAt: time.Time{}}
 		metaRW.On("write", map[string]storage.Meta{"aa": expectedMetaEntry}).Return(nil)
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		err := metaCRUD.set(expectedMetaEntry)
+		metaCRUD := NewMetaCRUD(metaRW)
+		err := metaCRUD.Set(expectedMetaEntry)
 		require.NoError(t, err)
 	})
 }
@@ -61,8 +61,8 @@ func TestMeta_Get(t *testing.T) {
 		metaRW := &metaRWMock{}
 		metaRW.On("read").Return(nil, errors.New("somerr"))
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		_, err := metaCRUD.get("aaa:123")
+		metaCRUD := NewMetaCRUD(metaRW)
+		_, err := metaCRUD.Get("aaa:123")
 		require.EqualError(t, err, "somerr")
 	})
 
@@ -70,8 +70,8 @@ func TestMeta_Get(t *testing.T) {
 		metaRW := &metaRWMock{}
 		metaRW.On("read").Return(map[string]storage.Meta{}, nil)
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		_, err := metaCRUD.get("aaa:123")
+		metaCRUD := NewMetaCRUD(metaRW)
+		_, err := metaCRUD.Get("aaa:123")
 		require.Equal(t, err, storage.ErrNotFound)
 	})
 
@@ -83,8 +83,8 @@ func TestMeta_Get(t *testing.T) {
 		readReturns := map[string]storage.Meta{"aaa:123": expMetaEntry1, "bbb:123": expMetaEntry2}
 		metaRW.On("read").Return(readReturns, nil)
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		_, err := metaCRUD.get("aaa:123")
+		metaCRUD := NewMetaCRUD(metaRW)
+		_, err := metaCRUD.Get("aaa:123")
 		require.NoError(t, err)
 	})
 }
@@ -94,8 +94,8 @@ func TestMeta_GetAll(t *testing.T) {
 		metaRW := &metaRWMock{}
 		metaRW.On("read").Return(nil, errors.New("somerr"))
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		_, err := metaCRUD.getAll()
+		metaCRUD := NewMetaCRUD(metaRW)
+		_, err := metaCRUD.GetAll()
 		require.EqualError(t, err, "somerr")
 	})
 
@@ -107,8 +107,8 @@ func TestMeta_GetAll(t *testing.T) {
 		readReturns := map[string]storage.Meta{"aaa:123": expMetaEntry1, "bbb:123": expMetaEntry2}
 		metaRW.On("read").Return(readReturns, nil)
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		all, err := metaCRUD.getAll()
+		metaCRUD := NewMetaCRUD(metaRW)
+		all, err := metaCRUD.GetAll()
 		require.NoError(t, err)
 		require.ElementsMatch(t, all, []storage.Meta{expMetaEntry1, expMetaEntry2})
 	})
@@ -119,8 +119,8 @@ func TestMeta_Remove(t *testing.T) {
 		metaRW := &metaRWMock{}
 		metaRW.On("read").Return(nil, errors.New("somerr"))
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		err := metaCRUD.remove("aaa:111")
+		metaCRUD := NewMetaCRUD(metaRW)
+		err := metaCRUD.Remove("aaa:111")
 		require.EqualError(t, err, "somerr")
 	})
 
@@ -134,8 +134,8 @@ func TestMeta_Remove(t *testing.T) {
 		writeArg := map[string]storage.Meta{"aaa:222": metaEntry2}
 		metaRW.On("write", writeArg).Return(nil)
 
-		metaCRUD := newMetaFileCRUD(metaRW)
-		err := metaCRUD.remove("aaa:111")
+		metaCRUD := NewMetaCRUD(metaRW)
+		err := metaCRUD.Remove("aaa:111")
 		require.NoError(t, err)
 	})
 }

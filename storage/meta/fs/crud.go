@@ -10,15 +10,15 @@ type metaRW interface {
 	ping() error
 }
 
-type metaFileCRUD struct {
+type MetaCRUD struct {
 	metaRW metaRW
 }
 
-func newMetaFileCRUD(metaRW metaRW) *metaFileCRUD {
-	return &metaFileCRUD{metaRW: metaRW}
+func NewMetaCRUD(metaRW metaRW) *MetaCRUD {
+	return &MetaCRUD{metaRW: metaRW}
 }
 
-func (s *metaFileCRUD) set(entry storage.Meta) error {
+func (s *MetaCRUD) Set(entry storage.Meta) error {
 	data, err := s.metaRW.read()
 	if err != nil {
 		return err
@@ -29,7 +29,7 @@ func (s *metaFileCRUD) set(entry storage.Meta) error {
 	return s.metaRW.write(data)
 }
 
-func (s *metaFileCRUD) get(imageName string) (storage.Meta, error) {
+func (s *MetaCRUD) Get(imageName string) (storage.Meta, error) {
 	data, err := s.metaRW.read()
 	if err != nil {
 		return storage.Meta{}, err
@@ -43,7 +43,7 @@ func (s *metaFileCRUD) get(imageName string) (storage.Meta, error) {
 	return entry, nil
 }
 
-func (s *metaFileCRUD) getAll() ([]storage.Meta, error) {
+func (s *MetaCRUD) GetAll() ([]storage.Meta, error) {
 	data, err := s.metaRW.read()
 	if err != nil {
 		return nil, err
@@ -57,7 +57,7 @@ func (s *metaFileCRUD) getAll() ([]storage.Meta, error) {
 	return list, nil
 }
 
-func (s *metaFileCRUD) remove(imageName string) error {
+func (s *MetaCRUD) Remove(imageName string) error {
 	data, err := s.metaRW.read()
 	if err != nil {
 		return err
@@ -68,6 +68,6 @@ func (s *metaFileCRUD) remove(imageName string) error {
 	return s.metaRW.write(data)
 }
 
-func (s *metaFileCRUD) ping() error {
+func (s *MetaCRUD) Ping() error {
 	return s.metaRW.ping()
 }
