@@ -9,10 +9,12 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 
 	"github.com/docker/docker/pkg/ioutils"
+	"github.com/klauspost/compress/zstd"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -25,7 +27,8 @@ type fileData struct {
 }
 
 // compact.ImgStorage stores every layer in a single instance.
-// it saves ~ 25% of disk space unlike fs.ImgStorage.
+// it saves ~25% of disk space unlike fs.ImgStorage.
+// then it additionally saves ~61% of disk space by zstd-compression.
 type ImgStorage struct {
 	dir string
 	mu  sync.Mutex
@@ -71,7 +74,7 @@ func (i *ImgStorage) Save(imageName string, imageDump io.Reader) error { // noli
 		}
 
 		// check if it is layer's file
-		if strings.HasPrefix(header.Name, lastDir) {
+		if strings.HasPrefix(header.Name, lastDir) { // nolint: nestif
 			dstFile := filepath.Join(i.dir, "layers", header.Name)
 			dstFileStat, err := os.Stat(dstFile)
 			switch {
@@ -89,7 +92,16 @@ func (i *ImgStorage) Save(imageName string, imageDump io.Reader) error { // noli
 				return err
 			}
 
-			_, cpErr := io.Copy(file, archive) // nolint: gosec
+			copyFunc := io.Copy
+			if filepath.Base(header.Name) == "layer.tar" {
+				copyFunc = compressAndCopy
+				err = saveOriginalSize(dstFile, header.Size)
+				if err != nil {
+					return err
+				}
+			}
+
+			_, cpErr := copyFunc(file, archive)
 			if closeErr := file.Close(); closeErr != nil {
 				return err
 			}
@@ -338,6 +350,16 @@ func tarFiles(tmpTar io.Writer, toCopy []fileData) error {
 			return err
 		}
 
+		copyFunc := io.Copy
+		if fi.Name() == "layer.tar" {
+			copyFunc = decompressAndCopy
+			size, err := loadOriginalSize(data.srcPath)
+			if err != nil {
+				return err
+			}
+			hdr.Size = size
+		}
+
 		hdr.Name = data.tarPath
 		if err := tw.WriteHeader(hdr); err != nil {
 			return err
@@ -353,7 +375,7 @@ func tarFiles(tmpTar io.Writer, toCopy []fileData) error {
 			return err
 		}
 
-		if _, err = io.Copy(tw, srcFile); err != nil {
+		if _, err = copyFunc(tw, srcFile); err != nil {
 			_ = srcFile.Close()
 
 			return err
@@ -364,4 +386,52 @@ func tarFiles(tmpTar io.Writer, toCopy []fileData) error {
 	}
 
 	return nil
+}
+
+func compressAndCopy(dst io.Writer, src io.Reader) (int64, error) {
+	enc, err := zstd.NewWriter(dst, zstd.WithEncoderLevel(zstd.SpeedFastest))
+	if err != nil {
+		return 0, err
+	}
+	written, err := io.Copy(enc, src)
+	if err != nil {
+		_ = enc.Close()
+
+		return written, err
+	}
+
+	return written, enc.Close()
+}
+
+func decompressAndCopy(dst io.Writer, src io.Reader) (int64, error) {
+	dec, err := zstd.NewReader(src)
+	if err != nil {
+		return 0, err
+	}
+	defer dec.Close()
+
+	written, err := io.Copy(dst, dec)
+	if err != nil {
+		return written, err
+	}
+
+	return written, nil
+}
+
+func saveOriginalSize(filePath string, size int64) error {
+	return ioutil.WriteFile(filePath+"originalSize", []byte(strconv.FormatInt(size, 10)), 0600)
+}
+
+func loadOriginalSize(filePath string) (int64, error) {
+	b, err := ioutil.ReadFile(filePath + "originalSize")
+	if err != nil {
+		return 0, err
+	}
+
+	size, err := strconv.ParseInt(string(b), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return size, nil
 }
